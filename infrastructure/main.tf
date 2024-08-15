@@ -16,9 +16,8 @@ module "vpc" {
 module "ecr" {
   source = "./modules/ecr"
 
-  name         = "dotnet-todo"
-  environment  = "dev"
-  force_delete = true
+  name        = "dotnet-todo"
+  environment = "dev"
 }
 
 module "lambda" {
