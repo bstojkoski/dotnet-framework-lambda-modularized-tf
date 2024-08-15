@@ -50,6 +50,13 @@ jobs:
       run: terraform init -backend-config="env/dev/backend.hcl"
       working-directory: infrastructure
 
+    - name: Terraform Destroy
+      run: terraform destroy -var-file="env/dev/terraform.tfvars" -auto-approve
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      working-directory: infrastructure
+
     - name: Terraform Plan
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
