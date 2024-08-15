@@ -1,0 +1,37 @@
+replicaCount: 1
+
+image:
+  repository: 024848463067.dkr.ecr.eu-west-1.amazonaws.com/dotnet-todo
+  tag: "1.11.51"
+  pullPolicy: Always # Always, IfNotPresent
+
+serviceAccount:
+  name: dotnet-todo
+  annotations:
+    iam.amazonaws.com/role: arn:aws:iam::024848463067:role/dotnet-todo-s3-readonly-role
+
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75
+
+service:
+  type: NodePort
+  port: 80
+
+ingress:
+  enabled: false
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths: []
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: []
+
+env:
+  - name: ASPNETCORE_ENVIRONMENT
+    value: "Production"

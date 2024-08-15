@@ -1,0 +1,70 @@
+name: Run infrastructure and Deploy AWS Lambda
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  run-infra-and-deploy-lambda:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-west-1
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0'
+
+    - name: Build application
+      run: |
+        dotnet restore
+        dotnet publish -c Release -o ./publish
+        zip -r lambda.zip ./publish/*
+        aws s3 cp lambda.zip s3://terraform-dotnet-todo-tfstate/src/lambda.zip
+      working-directory: src
+
+    - name: Install .NET Tool
+      run: dotnet tool install -g Amazon.Lambda.Tools
+
+    - name: Terraform Init
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: terraform init -backend-config="env/dev/backend.hcl"
+      working-directory: infrastructure
+
+    - name: Terraform Plan
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: terraform plan -var-file="env/dev/terraform.tfvars"
+      working-directory: infrastructure
+
+    - name: Terraform Apply
+      run: terraform apply -var-file="env/dev/terraform.tfvars" -auto-approve
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      working-directory: infrastructure
+
+    - name: Deploy Lambda
+      run: |
+        dotnet lambda deploy-function TodoApi --function-runtime "dotnet8" --region "eu-west-1" --function-timeout "15" --function-memory-size "512" --function-role "arn:aws:iam::024848463067:role/lambda_exec_role" --function-handler "TodoApi"
+      working-directory: src

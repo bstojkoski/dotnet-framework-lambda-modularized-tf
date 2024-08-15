@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dotnet-todo.fullname" . }}
+  labels:
+    {{- include "dotnet-todo.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 8080
+      nodePort: 32714
+  selector:
+    {{- include "dotnet-todo.selectorLabels" . | nindent 4 }}

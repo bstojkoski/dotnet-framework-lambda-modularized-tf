@@ -1,0 +1,80 @@
+name: CI Pipeline
+
+on:
+  workflow_run:
+    workflows: ["Run infrastructure and Deploy AWS Lambda"]
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: AWS ECR Login
+        env:
+         aws-region: eu-west-1
+         AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com
+
+      - name: Semantic Version
+        id: version
+        run: |
+          if [ -z "${GITHUB_REF##refs/tags/*}" ]; then
+            # tag build
+            VERSION="v${GITHUB_REF#refs/tags/v}"
+          else
+            # master build
+            VERSION=$(date +"1.%H.%M")
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set helm_version
+        run: echo "${{ env.VERSION }}" > helm_version.txt
+
+      - name: Commit helm_version.txt
+        run: |
+          git config --local user.email "stojkoskiborce1@gmail.com"
+          git config --local user.name "bstojkoski"
+          git add helm_version.txt
+          git commit -m "Update helm_version to ${{ env.VERSION }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker images
+        run: |
+          docker build -t dotnet-todo:${{ env.VERSION }} ./src
+
+      - name: Tag and push Docker image to ECR
+        run: |
+          docker tag dotnet-todo:${{ env.VERSION }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com/dotnet-todo:${{ env.VERSION }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-1.amazonaws.com/dotnet-todo:${{ env.VERSION }}
+
+      - name: Build .NET project
+        run: dotnet build ./src/TodoApi.csproj --configuration Release /p:Version=${{ env.VERSION }}
+
+      - name: Install ReSharper Global Tools
+        run: dotnet tool install JetBrains.ReSharper.GlobalTools --global
+
+      - name: Run ReSharper InspectCode
+        run: jb inspectcode ./src/TodoApi.csproj --output=results.xml
+
+      - name: Upload ReSharper results
+        uses: actions/upload-artifact@v2
+        with:
+          name: inspectcode-results
+          path: results.xml
