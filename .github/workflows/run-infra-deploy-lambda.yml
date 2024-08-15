@@ -64,14 +64,14 @@ jobs:
       run: terraform plan -var-file="env/dev/terraform.tfvars"
       working-directory: infrastructure
 
-    - name: Terraform Apply
-      run: terraform apply -var-file="env/dev/terraform.tfvars" -auto-approve
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      working-directory: infrastructure
+    #- name: Terraform Apply
+    #  run: terraform apply -var-file="env/dev/terraform.tfvars" -auto-approve
+    #  env:
+    #    AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #  working-directory: infrastructure
 
-    - name: Deploy Lambda
-      run: |
-        dotnet lambda deploy-function TodoApi --function-runtime "dotnet8" --region "eu-west-1" --function-timeout "15" --function-memory-size "512" --function-role "arn:aws:iam::024848463067:role/lambda_exec_role" --function-handler "TodoApi"
-      working-directory: src
+    #- name: Deploy Lambda
+    #  run: |
+    #    dotnet lambda deploy-function TodoApi --function-runtime "dotnet8" --region "eu-west-1" --function-timeout "15" --function-memory-size "512" --function-role "arn:aws:iam::024848463067:role/lambda_exec_role" --function-handler "TodoApi"
+    #  working-directory: src

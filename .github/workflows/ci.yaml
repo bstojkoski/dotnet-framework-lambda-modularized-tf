@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   workflow_run:
-    workflows: ["Run infrastructure and Deploy AWS Lambda"]
+    workflows: ["Run infrastructure and Deploy AWS Lambda111"]
     types:
       - completed
 
